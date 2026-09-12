@@ -1,16 +1,16 @@
 #CONTAINER-NAME
-CONTAINER_NAME=hibiscus-fedora44
+CONTAINER_NAME=hibiscus-fedora45
 
 #default-preset: 8000
-HIBISCUS_FEDORA44_MCP_PUBLISH_PORT=8000
+HIBISCUS_FEDORA45_MCP_PUBLISH_PORT=8000
 
-#default-preset: hibiscus-fedora44-jameica:/var/lib/hibiscus/.jameica:Z
+#default-preset: hibiscus-fedora45-jameica:/var/lib/hibiscus/.jameica:Z
 #required: Persistent Jameica user data
-HIBISCUS_FEDORA44_JAMEICA_VOLUMES=hibiscus-fedora44-jameica:/var/lib/hibiscus/.jameica:Z
+HIBISCUS_FEDORA45_JAMEICA_VOLUMES=hibiscus-fedora45-jameica:/var/lib/hibiscus/.jameica:Z
 
-#default-preset: hibiscus-fedora44-cfg:/usr/local/hibiscus/cfg:Z
+#default-preset: hibiscus-fedora45-cfg:/usr/local/hibiscus/cfg:Z
 #required: Persistent Hibiscus server configuration
-HIBISCUS_FEDORA44_CFG_VOLUMES=hibiscus-fedora44-cfg:/usr/local/hibiscus/cfg:Z
+HIBISCUS_FEDORA45_CFG_VOLUMES=hibiscus-fedora45-cfg:/usr/local/hibiscus/cfg:Z
 
 #repeat-group: ADDITIONAL_LINE suffix02 ADDITIONAL_LINE
 #repeat-freeform: ADDITIONAL_LINE

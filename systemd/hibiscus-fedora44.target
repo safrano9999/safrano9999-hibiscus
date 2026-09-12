@@ -1,7 +1,0 @@
-[Unit]
-Description=HIBISCUS-FEDORA44 Server and MCP
-Wants=hibiscus-fedora44.service hibiscus-fedora44-mcp.service
-After=hibiscus-fedora44.service hibiscus-fedora44-mcp.service
-
-[Install]
-WantedBy=multi-user.target

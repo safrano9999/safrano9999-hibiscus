@@ -1,5 +1,5 @@
 # Source of truth: SCRIPTS/githubactions. Generated copies are overwritten.
-name: HIBISCUS-FEDORA44 container image
+name: HIBISCUS-FEDORA45 container image
 run-name: ${{ inputs.monitor_id != '' && format('{0} [monitor:{1}:{2}]', github.workflow, inputs.monitor_id, inputs.monitor_final) || github.workflow }}
 
 on:
@@ -26,7 +26,7 @@ on:
         type: boolean
 
 concurrency:
-  group: hibiscus-fedora44-${{ github.ref }}
+  group: hibiscus-fedora45-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
@@ -38,8 +38,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      IMAGE_NAME: ghcr.io/safrano9999/hibiscus-fedora44
-      HIBISCUS_FEDORA44_MCP_IMAGE: ghcr.io/safrano9999/hibiscus-mcp:latest
+      IMAGE_NAME: ghcr.io/safrano9999/hibiscus-fedora45
+      HIBISCUS_FEDORA45_MCP_IMAGE: ghcr.io/safrano9999/hibiscus-mcp:latest
       DOCKER_BUILD_RECORD_UPLOAD: "false"
     steps:
       - name: Check out repository
@@ -81,14 +81,14 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
-      - name: Build and publish HIBISCUS-FEDORA44
+      - name: Build and publish HIBISCUS-FEDORA45
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Containerfile
           platforms: linux/amd64
           build-args: |
-            HIBISCUS_FEDORA44_MCP_IMAGE=${{ env.HIBISCUS_FEDORA44_MCP_IMAGE }}
+            HIBISCUS_FEDORA45_MCP_IMAGE=${{ env.HIBISCUS_FEDORA45_MCP_IMAGE }}
           pull: true
           no-cache: true
           push: true
@@ -107,6 +107,6 @@ jobs:
             set -euo pipefail
             test -f /usr/local/hibiscus/plugins/hibiscus/lib/hbci4j-core-4.1.12.jar
             node --check /opt/hibiscus-mcp/server.mjs
-            systemd-analyze verify hibiscus-fedora44.service hibiscus-fedora44-mcp.service hibiscus-fedora44.target
+            systemd-analyze verify hibiscus-fedora45.service hibiscus-fedora45-mcp.service hibiscus-fedora45.target
             java --version
           '

@@ -1,9 +1,9 @@
 # syntax=docker/dockerfile:1.7
 
-ARG HIBISCUS_FEDORA44_MCP_IMAGE=ghcr.io/safrano9999/hibiscus-mcp:latest
-FROM ${HIBISCUS_FEDORA44_MCP_IMAGE} AS hibiscus-mcp
+ARG HIBISCUS_FEDORA45_MCP_IMAGE=ghcr.io/safrano9999/hibiscus-mcp:latest
+FROM ${HIBISCUS_FEDORA45_MCP_IMAGE} AS hibiscus-mcp
 
-FROM quay.io/fedora/fedora:44
+FROM quay.io/fedora/fedora:45@sha256:6305681786488fb23c2fbe2dbbb383b285ba2fb3ea5383322514a9d31e04aecb
 
 ADD --checksum=sha256:ffe6d7e149f03f2e60915592a35d9872a0660c01338f97167d5eb5866c6ec3bb \
     https://www.willuhn.de/products/hibiscus-server/releases/hibiscus-server-2.12.4.zip \
@@ -33,25 +33,25 @@ COPY --from=hibiscus-mcp --chown=hibiscus-mcp:hibiscus-mcp \
 COPY systemd/ /usr/lib/systemd/system/
 
 RUN node --check /opt/hibiscus-mcp/server.mjs \
- && systemd-analyze verify hibiscus-fedora44.service hibiscus-fedora44-mcp.service hibiscus-fedora44.target \
- && systemctl enable hibiscus-fedora44.target
+ && systemd-analyze verify hibiscus-fedora45.service hibiscus-fedora45-mcp.service hibiscus-fedora45.target \
+ && systemctl enable hibiscus-fedora45.target
 
 RUN sed -i '2i#set($charsetHeader = $response.setContentType("text/html; charset=ISO-8859-1"))' \
     /usr/local/hibiscus/plugins/hibiscus.server/lib/velocity/includes/header.vm \
     /usr/local/hibiscus/plugins/jameica.webadmin/lib/velocity/includes/header.vm
 
-LABEL org.opencontainers.image.title="HIBISCUS-FEDORA44" \
-      org.opencontainers.image.description="Fedora 44, Hibiscus Server 2.12.4 and bearer-aware Hibiscus MCP" \
-      org.opencontainers.image.source="https://github.com/safrano9999/HIBISCUS-FEDORA44" \
+LABEL org.opencontainers.image.title="HIBISCUS-FEDORA45" \
+      org.opencontainers.image.description="Fedora 45, Hibiscus Server 2.12.4 and bearer-aware Hibiscus MCP" \
+      org.opencontainers.image.source="https://github.com/safrano9999/HIBISCUS-FEDORA45" \
       io.safrano9999.jameica.version="2.12.0" \
       io.safrano9999.hibiscus.version="2.12.4" \
       io.safrano9999.hbci4java.version="4.1.12"
 
 ENV TZ=Europe/Berlin \
     JAVA_TOOL_OPTIONS=-Duser.timezone=Europe/Berlin \
-    HIBISCUS_FEDORA44_MCP_HOST=0.0.0.0 \
-    HIBISCUS_FEDORA44_MCP_PORT=8000 \
-    HIBISCUS_FEDORA44_MCP_UPSTREAM_URL=https://127.0.0.1:8080
+    HIBISCUS_FEDORA45_MCP_HOST=0.0.0.0 \
+    HIBISCUS_FEDORA45_MCP_PORT=8000 \
+    HIBISCUS_FEDORA45_MCP_UPSTREAM_URL=https://127.0.0.1:8080
 
 VOLUME ["/var/lib/hibiscus/.jameica", "/usr/local/hibiscus/cfg"]
 EXPOSE 8000 8080

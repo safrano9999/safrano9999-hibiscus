@@ -2,9 +2,9 @@
 set -euo pipefail
 
 DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-IMAGE="${HIBISCUS_FEDORA44_IMAGE:-ghcr.io/safrano9999/hibiscus-fedora44:latest}"
-BASE=ghcr.io/safrano9999/hibiscus-fedora44
-NAME="${CONFIG_CONTAINER_NAME:-hibiscus-fedora44}"
+IMAGE="${HIBISCUS_FEDORA45_IMAGE:-ghcr.io/safrano9999/hibiscus-fedora45:latest}"
+BASE=ghcr.io/safrano9999/hibiscus-fedora45
+NAME="${CONFIG_CONTAINER_NAME:-hibiscus-fedora45}"
 
 cd "$DIR"
 CONFIG_CONTAINER_NAME="$NAME" ./config.sh

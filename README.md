@@ -1,17 +1,17 @@
-# HIBISCUS-FEDORA44
+# HIBISCUS-FEDORA45
 
-`HIBISCUS-FEDORA44` kombiniert einen vollständigen Hibiscus-Server und
+`HIBISCUS-FEDORA45` kombiniert einen vollständigen Hibiscus-Server und
 [`HIBISCUS_MCP`](https://github.com/safrano9999/HIBISCUS_MCP) in einem
 systemd-basierten Fedora-Container.
 
-Container-Image: `ghcr.io/safrano9999/hibiscus-fedora44:latest`
+Container-Image: `ghcr.io/safrano9999/hibiscus-fedora45:latest`
 
 ## Architektur
 
 ```text
-hibiscus-fedora44.target
-├── hibiscus-fedora44.service      Hibiscus Web/HTTPS/XML-RPC :8080
-└── hibiscus-fedora44-mcp.service  Streamable HTTP MCP        :8000
+hibiscus-fedora45.target
+├── hibiscus-fedora45.service      Hibiscus Web/HTTPS/XML-RPC :8080
+└── hibiscus-fedora45-mcp.service  Streamable HTTP MCP        :8000
                                       │
                                       └── https://127.0.0.1:8080/
                                           ├── xmlrpc/
@@ -20,15 +20,15 @@ hibiscus-fedora44.target
 
 PID 1 ist systemd. Die drei zugehörigen Units liegen unter [`systemd/`](systemd/)
 und werden vom [`Containerfile`](Containerfile) direkt ins Image eingebaut:
-[`Target`](systemd/hibiscus-fedora44.target),
-[`Hibiscus-Dienst`](systemd/hibiscus-fedora44.service) und
-[`MCP-Dienst`](systemd/hibiscus-fedora44-mcp.service).
+[`Target`](systemd/hibiscus-fedora45.target),
+[`Hibiscus-Dienst`](systemd/hibiscus-fedora45.service) und
+[`MCP-Dienst`](systemd/hibiscus-fedora45-mcp.service).
 
 ## Enthaltene Versionen
 
 | Komponente | Version |
 | --- | --- |
-| Fedora | 44 |
+| Fedora | 45 |
 | Jameica | 2.12.0 |
 | Hibiscus Server | 2.12.4 Stable |
 | HBCI4Java | 4.1.12 |
@@ -78,7 +78,7 @@ MCP-Client; der interne MCP-Prozess verwendet anschließend
 | `8000` | MCP | `/mcp` und `/healthz` (Health ohne Authentifizierung) |
 
 Die Ports müssen nicht auf dem Host veröffentlicht werden. Ein leerer
-`HIBISCUS_FEDORA44_MCP_PUBLISH_PORT` lässt den MCP ausschließlich im
+`HIBISCUS_FEDORA45_MCP_PUBLISH_PORT` lässt den MCP ausschließlich im
 Podman-Netz erreichbar; Webzugriff kann ebenfalls über einen Reverse Proxy im
 gemeinsamen Netz erfolgen. Die Beispielkonfiguration veröffentlicht nur MCP
 auf `127.0.0.1:8000`; das `EXPOSE 8080` des Images allein erzeugt keine
@@ -88,8 +88,8 @@ Host-Portfreigabe.
 
 | Volume | Containerpfad | Inhalt |
 | --- | --- | --- |
-| `hibiscus-fedora44-jameica` | `/var/lib/hibiscus/.jameica` | Jameica-Profil, Bankzugänge und Laufzeitdaten |
-| `hibiscus-fedora44-cfg` | `/usr/local/hibiscus/cfg` | Hibiscus-Serverkonfiguration |
+| `hibiscus-fedora45-jameica` | `/var/lib/hibiscus/.jameica` | Jameica-Profil, Bankzugänge und Laufzeitdaten |
+| `hibiscus-fedora45-cfg` | `/usr/local/hibiscus/cfg` | Hibiscus-Serverkonfiguration |
 
 Der MCP-Teil besitzt keine eigene Datenbank und benötigt kein zusätzliches
 Volume.
@@ -109,21 +109,21 @@ Volume.
 ```
 
 Das Setup setzt sensible Runtime-Dateien auf Modus `0600`, rendert
-`hibiscus-fedora44.container` und zeigt den passenden Symlink-Befehl für das
+`hibiscus-fedora45.container` und zeigt den passenden Symlink-Befehl für das
 User-Quadlet an. Danach:
 
 ```bash
 systemctl --user daemon-reload
-systemctl --user restart hibiscus-fedora44.service
+systemctl --user restart hibiscus-fedora45.service
 ```
 
 Die internen Dienste lassen sich bei Bedarf getrennt prüfen:
 
 ```bash
-podman exec hibiscus-fedora44 systemctl is-active \
-  hibiscus-fedora44.service \
-  hibiscus-fedora44-mcp.service \
-  hibiscus-fedora44.target
+podman exec hibiscus-fedora45 systemctl is-active \
+  hibiscus-fedora45.service \
+  hibiscus-fedora45-mcp.service \
+  hibiscus-fedora45.target
 ```
 
 ## Build und Beziehung zu HIBISCUS_MCP
