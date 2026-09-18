@@ -85,7 +85,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./Containerfile
+          file: .github/scripts/Containerfile
           platforms: linux/amd64
           build-args: |
             HIBISCUS_FEDORA45_MCP_IMAGE=${{ env.HIBISCUS_FEDORA45_MCP_IMAGE }}
@@ -93,6 +93,8 @@ jobs:
           no-cache: true
           push: true
           tags: ${{ steps.tags.outputs.tags }}
+          labels: |
+            io.safrano9999.build.commit=${{ github.sha }}
 
       - name: Smoke-test published image
         env:
@@ -105,7 +107,7 @@ jobs:
           test "$(docker image inspect --format '{{json .Config.Cmd}}' "$image")" = '["/sbin/init"]'
           docker run --rm --entrypoint /bin/bash "$image" -lc '
             set -euo pipefail
-            test -f /usr/local/hibiscus/plugins/hibiscus/lib/hbci4j-core-4.1.12.jar
+            test -f /usr/local/hibiscus/plugins/hibiscus/lib/hbci4j-core-4.1.13.jar
             node --check /opt/hibiscus-mcp/server.mjs
             systemd-analyze verify hibiscus-fedora45.service hibiscus-fedora45-mcp.service hibiscus-fedora45.target
             java --version
