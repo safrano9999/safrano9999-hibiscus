@@ -2696,11 +2696,10 @@ generate_container_files() {
             printf '    ports:\n'
             for item in "${ports[@]}"; do printf '      - "%s"\n' "$item"; done
         fi
-        if [ -f "$CONFIG_FILE" ] || [ -f "$CONTAINER_FILE" ] || [ -f "$ENV_FILE" ]; then
+        if [ -f "$CONFIG_FILE" ] || [ -f "$ENV_FILE" ]; then
             printf '    # Runtime configuration files generated from *example files\n'
             printf '    env_file:\n'
             [ -f "$CONFIG_FILE" ] && printf '      - %s\n' "$CONFIG_FILE"
-            [ -f "$CONTAINER_FILE" ] && printf '      - %s\n' "$CONTAINER_FILE"
             [ -f "$ENV_FILE" ] && printf '      - %s\n' "$ENV_FILE"
         fi
         if [ "${#persistent_envs[@]}" -gt 0 ]; then
@@ -2749,11 +2748,10 @@ generate_container_files() {
         printf 'ContainerName=%s\n' "$CONTAINER_NAME"
         printf '# Container image from config or existing generated file\n'
         printf 'Image=%s\n' "$image"
-        if [ -f "$CONFIG_FILE" ] || [ -f "$CONTAINER_FILE" ] || [ -f "$ENV_FILE" ]; then
+        if [ -f "$CONFIG_FILE" ] || [ -f "$ENV_FILE" ]; then
             printf '# Runtime configuration files generated from *example files\n'
         fi
         [ -f "$CONFIG_FILE" ] && printf 'EnvironmentFile=%s\n' "$CONFIG_FILE"
-        [ -f "$CONTAINER_FILE" ] && printf 'EnvironmentFile=%s\n' "$CONTAINER_FILE"
         [ -f "$ENV_FILE" ] && printf 'EnvironmentFile=%s\n' "$ENV_FILE"
         for item in "${persistent_envs[@]}"; do printf 'Environment=%s\n' "$item"; done
         [ "${#ports[@]}" -gt 0 ] && printf '# Port mappings: publish host:PUBLISH_PORT:PORT from config.conf/container.conf\n'
