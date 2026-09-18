@@ -3,7 +3,7 @@
 
 ARG NODE_IMAGE=docker.io/library/node:24-alpine@sha256:760e44b64c78674d9c79fa32e63c0ba8f817f79791e1aa32e07669bb0bfeaeaa
 FROM ${NODE_IMAGE} AS hibiscus-mcp
-RUN apk add --no-cache git
+RUN apk add --no-cache bash git
 WORKDIR /src/hibiscus-mcp
 COPY build/mcp-source/ ./
 RUN npm ci --omit=dev \
