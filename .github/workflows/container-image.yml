@@ -39,7 +39,7 @@ jobs:
     timeout-minutes: 20
     env:
       IMAGE_NAME: ghcr.io/safrano9999/safrano9999-hibiscus
-      HIBISCUS_MCP_REF: main
+      HIBISCUS_MCP_REF: a632325b38b4c8846fb1679821db787284ce5463
       DOCKER_BUILD_RECORD_UPLOAD: "false"
     steps:
       - name: Check out repository
@@ -107,6 +107,8 @@ jobs:
           tags: ${{ steps.tags.outputs.tags }}
           labels: |
             io.safrano9999.build.commit=${{ github.sha }}
+            io.safrano9999.build.source=a77dccae14494c67d4bfb102025c14cf670714aa
+            io.safrano9999.build.inputs=c4d47885e4413ab11d24bbc27939b5345a76b2a1b7e28b60d0d0c523e324563e
             io.safrano9999.hibiscus-mcp.commit=${{ steps.mcp.outputs.commit }}
 
       - name: Smoke-test published image
