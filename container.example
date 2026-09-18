@@ -1,16 +1,29 @@
 #CONTAINER-NAME
-CONTAINER_NAME=hibiscus-fedora45
+CONTAINER_NAME=safrano9999-hibiscus
 
-#default-preset: 8000
-HIBISCUS_FEDORA45_MCP_PUBLISH_PORT=8000
+#container-command: image
 
-#default-preset: hibiscus-fedora45-jameica:/var/lib/hibiscus/.jameica:Z
-#required: Persistent Jameica user data
-HIBISCUS_FEDORA45_JAMEICA_VOLUMES=hibiscus-fedora45-jameica:/var/lib/hibiscus/.jameica:Z
+# Fixed internal image ports; these are not runtime environment variables.
+#container-port: HIBISCUS_WEBUI_PUBLISH_PORT 8080
+#container-port: HIBISCUS_MCP_PUBLISH_PORT 8000
 
-#default-preset: hibiscus-fedora45-cfg:/usr/local/hibiscus/cfg:Z
-#required: Persistent Hibiscus server configuration
-HIBISCUS_FEDORA45_CFG_VOLUMES=hibiscus-fedora45-cfg:/usr/local/hibiscus/cfg:Z
+#default-preset: 127.0.0.1
+HIBISCUS_WEBUI_PUBLISH_HOST=127.0.0.1
+# Leave blank for access only through the Podman network / Caddy.
+HIBISCUS_WEBUI_PUBLISH_PORT=
+
+#default-preset: 127.0.0.1
+HIBISCUS_MCP_PUBLISH_HOST=127.0.0.1
+# Leave blank for access only through the Podman network / Caddy.
+HIBISCUS_MCP_PUBLISH_PORT=
+
+#default-preset: ${CONTAINER_NAME}-jameica:/var/lib/hibiscus/.jameica:Z
+#required: Persistent Jameica user data; preserve existing volume names on migration.
+HIBISCUS_JAMEICA_VOLUMES=${CONTAINER_NAME}-jameica:/var/lib/hibiscus/.jameica:Z
+
+#default-preset: ${CONTAINER_NAME}-cfg:/usr/local/hibiscus/cfg:Z
+#required: Persistent Hibiscus server configuration; preserve existing volume names on migration.
+HIBISCUS_CFG_VOLUMES=${CONTAINER_NAME}-cfg:/usr/local/hibiscus/cfg:Z
 
 #repeat-group: ADDITIONAL_LINE suffix02 ADDITIONAL_LINE
 #repeat-freeform: ADDITIONAL_LINE

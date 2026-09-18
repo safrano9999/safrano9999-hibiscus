@@ -3,3 +3,12 @@
 *_container.conf
 *.container
 *-compose.yml
+.runtime/
+.state/
+build/
+*.service
+*.target
+!systemd/*.service
+!systemd/*.target
+baremetal/generated/
+__pycache__/

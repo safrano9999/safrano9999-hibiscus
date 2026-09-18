@@ -2,22 +2,24 @@
 set -euo pipefail
 
 DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-IMAGE="${HIBISCUS_FEDORA45_IMAGE:-ghcr.io/safrano9999/hibiscus-fedora45:latest}"
-BASE=ghcr.io/safrano9999/hibiscus-fedora45
-NAME="${CONFIG_CONTAINER_NAME:-hibiscus-fedora45}"
+IMAGE="${HIBISCUS_IMAGE:-ghcr.io/safrano9999/safrano9999-hibiscus:latest}"
+NAME="${CONFIG_CONTAINER_NAME:-safrano9999-hibiscus}"
 
+mode="${1:---container}"
+case "$mode" in
+  --container|--bare-metal) ;;
+  --help|-h) echo 'Usage: ./setup.sh [--container|--bare-metal]'; exit 0 ;;
+  *) echo "Unknown option: $mode" >&2; exit 2 ;;
+esac
 cd "$DIR"
+if [ "$mode" = --bare-metal ]; then
+  CONFIG_CONTAINER_NAME="$NAME" ./config.sh --no-container
+  exec "$DIR/baremetal/setup.sh"
+fi
 CONFIG_CONTAINER_NAME="$NAME" ./config.sh
 chmod 0600 "$NAME.env" "${NAME}_config.conf" "${NAME}_container.conf"
 
-image_ref="$IMAGE"
-if command -v podman >/dev/null 2>&1 && podman image exists "$IMAGE"; then
-  digest="$(podman image inspect --format '{{.Digest}}' "$IMAGE")"
-  [ -z "$digest" ] || image_ref="${BASE}@${digest}"
-else
-  echo 'Container image not local; use: sudo podman-smart1.sh --update' >&2
-fi
-CONFIG_CONTAINER_NAME="$NAME" CONFIG_CONTAINER_IMAGE="$image_ref" ./config.sh --render-container
+CONFIG_CONTAINER_NAME="$NAME" CONFIG_CONTAINER_IMAGE="$IMAGE" ./config.sh --render-container
 
 units="${XDG_CONFIG_HOME:-$HOME/.config}/containers/systemd"
 printf '\nSetup complete. Link the generated Quadlet with:\n'

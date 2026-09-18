@@ -1,5 +1,5 @@
 # Source of truth: SCRIPTS/githubactions. Generated copies are overwritten.
-name: HIBISCUS-FEDORA45 container image
+name: safrano9999-hibiscus container image
 run-name: ${{ inputs.monitor_id != '' && format('{0} [monitor:{1}:{2}]', github.workflow, inputs.monitor_id, inputs.monitor_final) || github.workflow }}
 
 on:
@@ -26,7 +26,7 @@ on:
         type: boolean
 
 concurrency:
-  group: hibiscus-fedora45-${{ github.ref }}
+  group: safrano9999-hibiscus-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
@@ -38,14 +38,28 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      IMAGE_NAME: ghcr.io/safrano9999/hibiscus-fedora45
-      HIBISCUS_FEDORA45_MCP_IMAGE: ghcr.io/safrano9999/hibiscus-mcp:latest
+      IMAGE_NAME: ghcr.io/safrano9999/safrano9999-hibiscus
+      HIBISCUS_MCP_REF: main
       DOCKER_BUILD_RECORD_UPLOAD: "false"
     steps:
       - name: Check out repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
+
+      - name: Check out standalone-capable MCP source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: safrano9999/HIBISCUS_MCP
+          ref: ${{ env.HIBISCUS_MCP_REF }}
+          path: build/mcp-source
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Record MCP source
+        id: mcp
+        shell: bash
+        run: echo "commit=$(git -C build/mcp-source rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Resolve image tags
         id: tags
@@ -81,20 +95,19 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
-      - name: Build and publish HIBISCUS-FEDORA45
+      - name: Build and publish safrano9999-hibiscus
         uses: docker/build-push-action@v6
         with:
           context: .
           file: .github/scripts/Containerfile
           platforms: linux/amd64
-          build-args: |
-            HIBISCUS_FEDORA45_MCP_IMAGE=${{ env.HIBISCUS_FEDORA45_MCP_IMAGE }}
           pull: true
           no-cache: true
           push: true
           tags: ${{ steps.tags.outputs.tags }}
           labels: |
             io.safrano9999.build.commit=${{ github.sha }}
+            io.safrano9999.hibiscus-mcp.commit=${{ steps.mcp.outputs.commit }}
 
       - name: Smoke-test published image
         env:
@@ -109,6 +122,25 @@ jobs:
             set -euo pipefail
             test -f /usr/local/hibiscus/plugins/hibiscus/lib/hbci4j-core-4.1.13.jar
             node --check /opt/hibiscus-mcp/server.mjs
-            systemd-analyze verify hibiscus-fedora45.service hibiscus-fedora45-mcp.service hibiscus-fedora45.target
+            systemd-analyze verify safrano9999-hibiscus.service safrano9999-hibiscus-mcp.service safrano9999-hibiscus.target
             java --version
           '
+
+      - name: Smoke-test MCP without banking access
+        env:
+          IMAGE_TAG: ${{ steps.tags.outputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          image="${IMAGE_NAME}:${IMAGE_TAG}"
+          container_id="$(docker run -d --network none --user hibiscus-mcp \
+            -e HIBISCUS_MCP_GATEWAY=ci-gateway \
+            -e HIBISCUS_STORE_PASSWORD=ci-upstream \
+            -e HIBISCUS_MCP_UPSTREAM_URL=http://127.0.0.1:18080 \
+            --entrypoint /usr/bin/node "$image" /opt/supergateway/dist/index.js \
+            --stdio '/usr/bin/node /opt/hibiscus-mcp/server.mjs' \
+            --outputTransport streamableHttp --stateful --host 0.0.0.0 --port 8000 \
+            --streamableHttpPath /mcp --healthEndpoint /healthz --sessionTimeout 3600000)"
+          trap 'docker rm -f "$container_id" >/dev/null 2>&1 || true' EXIT
+          docker exec -i "$container_id" node --input-type=module \
+            < .github/scripts/mcp-protocol-smoke.mjs

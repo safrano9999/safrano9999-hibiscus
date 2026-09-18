@@ -14,7 +14,7 @@ directory_has_config_examples() {
        [ -f "$directory/container.example" ]; then
         return 0
     fi
-    for env_example in "$directory"/fedora44-ai-*.env_example; do
+    for env_example in "$directory"/fedora[0-9]*-ai-*.env_example; do
         [ -f "$env_example" ] || continue
         [[ "$env_example" == *-additional.env_example ]] && continue
         stem="${env_example%.env_example}"
@@ -52,7 +52,7 @@ select_config_examples() {
     local env_example stem
     local -a fedora_stems=()
 
-    for env_example in "$directory"/fedora44-ai-*.env_example; do
+    for env_example in "$directory"/fedora[0-9]*-ai-*.env_example; do
         [ -f "$env_example" ] || continue
         [[ "$env_example" == *-additional.env_example ]] && continue
         stem="${env_example%.env_example}"
@@ -1014,16 +1014,21 @@ add_repo_bind_mount() {
         echo "Invalid %config-conf path: $rel" >&2
         return 1
     fi
-    [[ "$rel" == /* || "$rel" == ../* ]] && return 0
-    rel="${rel#./}"
-    [ -n "$rel" ] || return 0
-
-    source="$(cd "$DIR" && realpath -m -- "$rel")"
-    relative="$(realpath -m --relative-to="$DIR" "$source")"
-    [[ "$relative" != .. && "$relative" != ../* ]] || {
-        echo "Bind source escapes the configuration directory: $rel" >&2
-        return 1
-    }
+    if [[ "$rel" == /* ]]; then
+        # Absolute host paths require an explicit container mount target.
+        [ -n "$target_override" ] || return 0
+        source="$(realpath -m -- "$rel")"
+    else
+        [[ "$rel" == ../* ]] && return 0
+        rel="${rel#./}"
+        [ -n "$rel" ] || return 0
+        source="$(cd "$DIR" && realpath -m -- "$rel")"
+        relative="$(realpath -m --relative-to="$DIR" "$source")"
+        [[ "$relative" != .. && "$relative" != ../* ]] || {
+            echo "Bind source escapes the configuration directory: $rel" >&2
+            return 1
+        }
+    fi
     mkdir -p "$source"
     if [ -n "$target_override" ]; then
         [[ "$target_override" == /* && "$target_override" != / && "$target_override" != *:* ]] || {
@@ -2472,6 +2477,27 @@ mount_bind_from_value() {
     add_repo_bind_mount "$rel" "$target_override"
 }
 
+# Optional static image port, separate from user-configurable host publication.
+container_fixed_port() {
+    local requested="$1" source_file line directive key port
+    while IFS= read -r source_file || [ -n "$source_file" ]; do
+        [ -f "$source_file" ] || continue
+        while IFS= read -r line || [ -n "$line" ]; do
+            line="$(trim "$line")"
+            [[ "$line" == \#container-port:* ]] || continue
+            directive="$(trim "${line#\#container-port:}")"
+            read -r key port <<< "$directive"
+            [ "$key" = "$requested" ] || continue
+            [[ "$port" =~ ^[0-9]+$ ]] && (( 10#$port >= 1 && 10#$port <= 65535 )) || {
+                echo "Invalid #container-port for $key" >&2
+                return 1
+            }
+            printf '%s\n' "$port"
+            return 0
+        done < "$source_file"
+    done < <(mount_if_source_files)
+}
+
 generate_container_files() {
     local source_file host image compose_file quadlet_file line stripped entry key value
     local prefix internal_key internal_port publish_port publish_host map enabled_key enabled_value
@@ -2583,7 +2609,8 @@ generate_container_files() {
                 fi
                 case "${value,,}" in ""|blank|null) continue ;; esac
                 internal_key="${prefix}_PORT"
-                internal_port="$(config_value "$internal_key" || true)"
+                internal_port="$(container_fixed_port "$key")" || return 1
+                [ -n "$internal_port" ] || internal_port="$(config_value "$internal_key" || true)"
                 [ -n "$internal_port" ] || internal_port="$value"
                 publish_port="$value"
                 publish_host="$(config_value "${prefix}_PUBLISH_HOST" || true)"
@@ -2637,10 +2664,10 @@ generate_container_files() {
         add_unique "${host}:${first_port}:${first_port}" ports
     fi
 
-    if [ -z "$first_port" ] && [ ! -f "$DIR/webui.py" ]; then
+    if [ "$command_mode" != image ] && [ -z "$first_port" ] && [ ! -f "$DIR/webui.py" ]; then
         return 0
     fi
-    if [ -z "$first_port" ]; then
+    if [ "$command_mode" != image ] && [ -z "$first_port" ]; then
         echo "  No PORT or *_PORT found; skipping docker-compose.yml and $CONTAINER_NAME.container"
         return 0
     fi

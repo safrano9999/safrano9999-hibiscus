@@ -1,0 +1,22 @@
+[Unit]
+Description=safrano9999-hibiscus MCP gateway
+After=safrano9999-hibiscus.service
+Wants=safrano9999-hibiscus.service
+PartOf=safrano9999-hibiscus.target
+
+[Service]
+Type=simple
+User=hibiscus-mcp
+Group=hibiscus-mcp
+WorkingDirectory=/opt/hibiscus-mcp
+Environment=HOME=/var/lib/hibiscus-mcp
+Environment=NODE_ENV=production
+PassEnvironment=HIBISCUS_STORE_PASSWORD HIBISCUS_MCP_GATEWAY
+ExecStart=/usr/bin/env HIBISCUS_MCP_UPSTREAM_URL=https://127.0.0.1:8080 /usr/bin/node /opt/supergateway/dist/index.js --stdio "/usr/bin/node /opt/hibiscus-mcp/server.mjs" --outputTransport streamableHttp --stateful --host 0.0.0.0 --port 8000 --streamableHttpPath /mcp --healthEndpoint /healthz --sessionTimeout 3600000 --logLevel info
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+NoNewPrivileges=true
+
+[Install]
+WantedBy=safrano9999-hibiscus.target

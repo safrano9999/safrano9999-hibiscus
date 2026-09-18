@@ -1,8 +1,18 @@
 # Source of truth: SCRIPTS/githubactions. Generated copies are overwritten.
 # syntax=docker/dockerfile:1.7
 
-ARG HIBISCUS_FEDORA45_MCP_IMAGE=ghcr.io/safrano9999/hibiscus-mcp:latest
-FROM ${HIBISCUS_FEDORA45_MCP_IMAGE} AS hibiscus-mcp
+ARG NODE_IMAGE=docker.io/library/node:24-alpine@sha256:760e44b64c78674d9c79fa32e63c0ba8f817f79791e1aa32e07669bb0bfeaeaa
+FROM ${NODE_IMAGE} AS hibiscus-mcp
+RUN apk add --no-cache git
+WORKDIR /src/hibiscus-mcp
+COPY build/mcp-source/ ./
+RUN npm ci --omit=dev \
+ && npm test \
+ && HIBISCUS_MCP_NODE=/usr/local/bin/node scripts/setup-supergateway.sh \
+ && mkdir -p /opt/hibiscus-mcp \
+ && cp server.mjs sync.mjs package.json package-lock.json /opt/hibiscus-mcp/ \
+ && cp -a node_modules /opt/hibiscus-mcp/ \
+ && mv .runtime/supergateway /opt/supergateway
 
 FROM quay.io/fedora/fedora@sha256:47096f483347945c6077871e5f93a168a94b1799623372c3b86a9ff81148017e
 
@@ -34,25 +44,22 @@ COPY --from=hibiscus-mcp --chown=hibiscus-mcp:hibiscus-mcp \
 COPY systemd/ /usr/lib/systemd/system/
 
 RUN node --check /opt/hibiscus-mcp/server.mjs \
- && systemd-analyze verify hibiscus-fedora45.service hibiscus-fedora45-mcp.service hibiscus-fedora45.target \
- && systemctl enable hibiscus-fedora45.target
+ && systemd-analyze verify safrano9999-hibiscus.service safrano9999-hibiscus-mcp.service safrano9999-hibiscus.target \
+ && systemctl enable safrano9999-hibiscus.target
 
 RUN sed -i '2i#set($charsetHeader = $response.setContentType("text/html; charset=ISO-8859-1"))' \
     /usr/local/hibiscus/plugins/hibiscus.server/lib/velocity/includes/header.vm \
     /usr/local/hibiscus/plugins/jameica.webadmin/lib/velocity/includes/header.vm
 
-LABEL org.opencontainers.image.title="HIBISCUS-FEDORA45" \
+LABEL org.opencontainers.image.title="safrano9999-hibiscus" \
       org.opencontainers.image.description="Fedora 45, Hibiscus Server 2.12.4 and bearer-aware Hibiscus MCP" \
-      org.opencontainers.image.source="https://github.com/safrano9999/HIBISCUS-FEDORA45" \
+      org.opencontainers.image.source="https://github.com/safrano9999/safrano9999-hibiscus" \
       io.safrano9999.jameica.version="2.12.0" \
       io.safrano9999.hibiscus.version="2.12.4" \
       io.safrano9999.hbci4java.version="4.1.13"
 
 ENV TZ=Europe/Berlin \
-    JAVA_TOOL_OPTIONS=-Duser.timezone=Europe/Berlin \
-    HIBISCUS_FEDORA45_MCP_HOST=0.0.0.0 \
-    HIBISCUS_FEDORA45_MCP_PORT=8000 \
-    HIBISCUS_FEDORA45_MCP_UPSTREAM_URL=https://127.0.0.1:8080
+    JAVA_TOOL_OPTIONS=-Duser.timezone=Europe/Berlin
 
 VOLUME ["/var/lib/hibiscus/.jameica", "/usr/local/hibiscus/cfg"]
 EXPOSE 8000 8080

@@ -1,7 +1,7 @@
 [Unit]
 Description=Jameica Hibiscus Server
 After=network.target
-PartOf=hibiscus-fedora45.target
+PartOf=safrano9999-hibiscus.target
 
 [Service]
 Type=simple
@@ -21,4 +21,4 @@ TimeoutStopSec=45
 NoNewPrivileges=true
 
 [Install]
-WantedBy=hibiscus-fedora45.target
+WantedBy=safrano9999-hibiscus.target

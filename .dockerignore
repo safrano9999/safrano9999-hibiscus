@@ -5,3 +5,9 @@
 *_container.conf
 *.container
 *-compose.yml
+.runtime
+.state
+build/mcp-source/.git
+build/mcp-source/node_modules
+build/mcp-source/.runtime
+baremetal/generated

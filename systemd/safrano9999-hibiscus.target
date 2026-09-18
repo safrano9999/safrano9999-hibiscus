@@ -1,0 +1,7 @@
+[Unit]
+Description=safrano9999-hibiscus Server and MCP
+Wants=safrano9999-hibiscus.service safrano9999-hibiscus-mcp.service
+After=safrano9999-hibiscus.service safrano9999-hibiscus-mcp.service
+
+[Install]
+WantedBy=multi-user.target
