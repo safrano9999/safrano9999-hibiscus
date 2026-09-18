@@ -39,7 +39,7 @@ jobs:
     timeout-minutes: 20
     env:
       IMAGE_NAME: ghcr.io/safrano9999/safrano9999-hibiscus
-      HIBISCUS_MCP_REF: main
+      HIBISCUS_MCP_REF: a632325b38b4c8846fb1679821db787284ce5463
       DOCKER_BUILD_RECORD_UPLOAD: "false"
     steps:
       - name: Check out repository
