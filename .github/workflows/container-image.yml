@@ -107,6 +107,8 @@ jobs:
           tags: ${{ steps.tags.outputs.tags }}
           labels: |
             io.safrano9999.build.commit=${{ github.sha }}
+            io.safrano9999.build.source=6f4a9d724c13ac79105977b60d4780cdc23fb00a
+            io.safrano9999.build.inputs=4368996d213573b4e7ae83d339a32ce290302cbf443dd8c8ead1088075f2e6ae
             io.safrano9999.hibiscus-mcp.commit=${{ steps.mcp.outputs.commit }}
 
       - name: Smoke-test published image
