@@ -99,7 +99,7 @@ try {
   assert.equal(empty.isError,true);
   assert.equal(empty.content[0].text,'No matching Hibiscus account found');
   const appLog = await readFile(`${home}/.jameica/jameica.log`, 'utf8');
-  assert.ok(!/NoSuchMethodError|NoSuchFieldError|NoClassDefFoundError|Fehler beim Initialisieren des HBCI|stimmt nicht mit der erwarteten Version/.test(appLog), 'clean banking plugin startup');
+  assert.ok(!/NoSuchMethodError|NoSuchFieldError|NoClassDefFoundError|SecurityException|Fehler beim Initialisieren des HBCI|stimmt nicht mit der erwarteten Version/.test(appLog), 'clean banking plugin startup');
   console.log('PASS: Hibiscus 2.12.4 + HBCI4Java 4.1.17 WebUI/auth/XML-RPC/MCP, no bank access');
 } catch (error) {
   console.error(logs);

@@ -41,7 +41,7 @@ RUN dnf -y --setopt=install_weak_deps=False install \
 # Recompile two stable 2.12.4 classes, not a nightly plugin. HBCIUtils.init/initThread
 # now return HBCI4JavaClient; recompilation updates the JVM method descriptors.
 FROM runtime-base AS compatibility
-RUN dnf -y --setopt=install_weak_deps=False install java-25-openjdk-devel
+RUN dnf -y --setopt=install_weak_deps=False install java-25-openjdk-devel zip
 ADD --checksum=sha256:05f1667f783cccaf0ae05fb411528debf7a1311b81b4e15a3bad6ee3761f10b2 \
     https://raw.githubusercontent.com/willuhn/hibiscus/2f6108669ad6a9b720d357be1d963af2efd655a9/src/de/willuhn/jameica/hbci/HBCI.java \
     /tmp/HBCI.java
@@ -55,6 +55,9 @@ RUN set -eu; \
     sed -i 's/HBCI4JAVA_VERSION = "4.1.10"/HBCI4JAVA_VERSION = "4.1.17"/' /tmp/HBCI.java; \
     javac -encoding ISO-8859-1 -cp "$classpath" -d /tmp/patched /tmp/HBCI.java /tmp/HBCIProperties.java; \
     jar uf /usr/local/hibiscus/plugins/hibiscus/hibiscus.jar -C /tmp/patched .; \
+    # Our modified JAR is no longer the upstream-signed binary. Remove only its
+    # now-invalid signature, not signature verification for Java or other JARs.
+    zip -d /usr/local/hibiscus/plugins/hibiscus/hibiscus.jar META-INF/CN_JAMEI.SF META-INF/CN_JAMEI.RSA; \
     java -cp "$classpath" /tmp/ApiCompatibility.java /usr/local/hibiscus/plugins
 
 FROM runtime-base
