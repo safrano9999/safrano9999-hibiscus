@@ -36,7 +36,7 @@ permissions:
 jobs:
   build-test-publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
     env:
       IMAGE_NAME: ghcr.io/safrano9999/safrano9999-hibiscus
       HIBISCUS_MCP_REF: a632325b38b4c8846fb1679821db787284ce5463
@@ -61,24 +61,40 @@ jobs:
         shell: bash
         run: echo "commit=$(git -C build/mcp-source rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
+      # Reuse ucore's exact approved compose, checksum verifier and manifest pin.
+      - name: Check out pinned Fedora Beta policy
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: safrano9999/fedora45-ai-safrano9999
+          ref: 49b5f4c1cfc257a80a8a739b2c0bc32dab32e00f
+          path: build/fedora-policy
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /.github/scripts/prepare-fedora-beta.py
+            /upgrade-loop/build_dependencies.py
+            /upgrade-loop/build-dependencies-whitelist.json
+            /fedora45-ai-core-pre/Containerfile
+
+      - name: Verify approved Fedora Beta OCI context
+        id: fedora
+        run: python3 build/fedora-policy/.github/scripts/prepare-fedora-beta.py
+
       - name: Resolve image tags
         id: tags
         shell: bash
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
         run: |
           set -euo pipefail
-          version="${{ inputs.image_tag }}"
+          version="$IMAGE_TAG"
           if [ -z "$version" ]; then
             version="$(date -u +%Y.%-m.%-d)"
           fi
           [[ "$version" =~ ^[A-Za-z0-9_.-]+$ ]]
           {
             echo "version=$version"
-            echo "tags<<EOF"
-            echo "${IMAGE_NAME}:${version}"
-            if [ "${{ inputs.push_latest }}" = true ]; then
-              echo "${IMAGE_NAME}:latest"
-            fi
-            echo "EOF"
+            echo "candidate=${IMAGE_NAME}:candidate-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           } >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
@@ -95,32 +111,34 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
-      - name: Build and publish safrano9999-hibiscus
+      - name: Build candidate safrano9999-hibiscus
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
           file: .github/scripts/Containerfile
           platforms: linux/amd64
+          build-contexts: ${{ steps.fedora.outputs.context }}
           pull: true
           no-cache: true
           push: true
-          tags: ${{ steps.tags.outputs.tags }}
+          tags: ${{ steps.tags.outputs.candidate }}
           labels: |
             io.safrano9999.build.commit=${{ github.sha }}
             io.safrano9999.hibiscus-mcp.commit=${{ steps.mcp.outputs.commit }}
 
-      - name: Smoke-test published image
+      - name: Smoke-test candidate image
         env:
-          IMAGE_TAG: ${{ steps.tags.outputs.version }}
+          CANDIDATE_DIGEST: ${{ steps.build.outputs.digest }}
         shell: bash
         run: |
           set -euo pipefail
-          image="${IMAGE_NAME}:${IMAGE_TAG}"
+          image="${IMAGE_NAME}@${CANDIDATE_DIGEST}"
           docker pull "$image"
           test "$(docker image inspect --format '{{json .Config.Cmd}}' "$image")" = '["/sbin/init"]'
           docker run --rm --entrypoint /bin/bash "$image" -lc '
             set -euo pipefail
-            test -f /usr/local/hibiscus/plugins/hibiscus/lib/hbci4j-core-4.1.13.jar
+            test -f /usr/local/hibiscus/plugins/hibiscus/lib/hbci4j-core-4.1.17.jar
             node --check /opt/hibiscus-mcp/server.mjs
             systemd-analyze verify safrano9999-hibiscus.service safrano9999-hibiscus-mcp.service safrano9999-hibiscus.target
             java --version
@@ -128,11 +146,11 @@ jobs:
 
       - name: Smoke-test MCP without banking access
         env:
-          IMAGE_TAG: ${{ steps.tags.outputs.version }}
+          CANDIDATE_DIGEST: ${{ steps.build.outputs.digest }}
         shell: bash
         run: |
           set -euo pipefail
-          image="${IMAGE_NAME}:${IMAGE_TAG}"
+          image="${IMAGE_NAME}@${CANDIDATE_DIGEST}"
           container_id="$(docker run -d --network none --user hibiscus-mcp \
             -e HIBISCUS_MCP_GATEWAY=ci-gateway \
             -e HIBISCUS_STORE_PASSWORD=ci-upstream \
@@ -141,6 +159,34 @@ jobs:
             --stdio '/usr/bin/node /opt/hibiscus-mcp/server.mjs' \
             --outputTransport streamableHttp --stateful --host 0.0.0.0 --port 8000 \
             --streamableHttpPath /mcp --healthEndpoint /healthz --sessionTimeout 3600000)"
-          trap 'docker rm -f "$container_id" >/dev/null 2>&1 || true' EXIT
+          trap 'docker rm -fv "$container_id" >/dev/null 2>&1 || true' EXIT
           docker exec -i "$container_id" node --input-type=module \
             < .github/scripts/mcp-protocol-smoke.mjs
+
+      - name: Test Hibiscus WebUI XML-RPC and MCP with an isolated empty profile
+        env:
+          CANDIDATE_DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          set -euo pipefail
+          image="${IMAGE_NAME}@${CANDIDATE_DIGEST}"
+          container_id="$(docker run -d --network none --entrypoint /usr/bin/sleep "$image" infinity)"
+          trap 'docker rm -fv "$container_id" >/dev/null 2>&1 || true' EXIT
+          docker exec -i "$container_id" node --input-type=module \
+            < .github/scripts/server-api-smoke.mjs
+
+      - name: Promote verified image
+        env:
+          CANDIDATE_DIGEST: ${{ steps.build.outputs.digest }}
+          IMAGE_TAG: ${{ steps.tags.outputs.version }}
+          PUSH_LATEST: ${{ inputs.push_latest }}
+        run: |
+          set -euo pipefail
+          tags=(--tag "${IMAGE_NAME}:${IMAGE_TAG}")
+          if [ "$PUSH_LATEST" = true ]; then tags+=(--tag "${IMAGE_NAME}:latest"); fi
+          docker buildx imagetools create "${tags[@]}" "${IMAGE_NAME}@${CANDIDATE_DIGEST}"
+          {
+            echo "Hibiscus 2.12.4 / HBCI4Java 4.1.17 / Fedora 45 Beta-1.3"
+            echo "Image: ${IMAGE_NAME}:${IMAGE_TAG}"
+            echo "Digest: ${CANDIDATE_DIGEST}"
+            echo "Java API linkage, MCP protocols, WebUI and XML-RPC verified without bank access."
+          } >> "$GITHUB_STEP_SUMMARY"

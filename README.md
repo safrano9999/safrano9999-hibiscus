@@ -5,6 +5,11 @@ Ein gemeinsames Image für Hibiscus Server und den eigenständig nutzbaren
 
 Image: `ghcr.io/safrano9999/safrano9999-hibiscus:latest`
 
+Gepinnt: **Hibiscus Server 2.12.4**, **Jameica 2.12.0**, **HBCI4Java 4.1.17**
+und die freigegebene **Fedora 45 Beta-1.3** wie in ucores Core-pre-Kaskade.
+Kein Nightly: Nur die HBCI4Java-Versionsprüfung der unveränderten stabilen
+Hibiscus-Quellklasse wird auf 4.1.17 angepasst und in GitHub Actions neu kompiliert.
+
 ```text
 ucore / MCP-Client → :8000/mcp → https://127.0.0.1:8080/xmlrpc/
 Webbrowser / Caddy → :8080/hibiscus/
@@ -115,13 +120,20 @@ nur die Container-Betriebsart. Genau eine Betriebsart gleichzeitig verwenden.
 Die SOT liegt in `SCRIPTS/githubactions/safrano9999-hibiscus`; die generierten
 Dateien werden hier unter `.github/` eingecheckt. Das `Containerfile` im Repo
 ist dieselbe Build-Rezeptur. GitHub Actions lädt `safrano9999/HIBISCUS_MCP` mit
-Tiefe 1, standardmäßig vom neuesten `main`, und vermerkt den verwendeten Commit
-im Image. Der Upgrade-Runner löst `main` einmal auf und übergibt den konkreten
-Commit an den Build. Es wird nur das gemeinsame Image veröffentlicht.
+Tiefe 1 vom im Workflow fest gepinnten Commit und vermerkt diesen im Image.
+Fedora-Compose und Prüflogik stammen ebenfalls aus einem festen Commit der
+ucore-Kaskade; Archiv, Manifest und sämtliche OCI-Blobs werden verifiziert.
+Es wird nur das gemeinsame Image veröffentlicht.
 
 Die MCP-Tests laufen beim Build mit simuliertem XML-RPC/HTTP. Der anschließende
 Protokolltest läuft ohne Netzwerk und ohne echte Banking-Zugangsdaten; er prüft
 Initialisierung, Authentifizierung und Tool-Katalog, führt aber keine Tools aus.
+Zusätzlich werden alle HBCI4Java-Methoden- und Feldreferenzen der Plugin-JARs
+gegen 4.1.17 aufgelöst. Ein zweiter Test startet den echten Hibiscus-Server mit
+einem leeren H2-Profil und Dummy-Passwort in einem Container ohne Netzwerk.
+Er prüft WebUI, Authentifizierung, XML-RPC und die rein lesenden MCP-Aufrufe
+für leere Konten-/Auftragslisten. Kein Bank-Sync und keine echten Zugangsdaten.
+Release-Tag und `latest` werden erst nach diesen Tests auf den Kandidaten gesetzt.
 
 Das optionale Standalone-Containerfile bleibt im MCP-Quellrepo unter
 [`STANDALONE/Containerfile`](https://github.com/safrano9999/HIBISCUS_MCP/blob/main/STANDALONE/Containerfile).

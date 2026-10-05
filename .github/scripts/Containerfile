@@ -14,14 +14,14 @@ RUN npm ci --omit=dev \
  && cp -a node_modules /opt/hibiscus-mcp/ \
  && mv .runtime/supergateway /opt/supergateway
 
-FROM quay.io/fedora/fedora@sha256:78ebbdc752eda02b9c2705876bd55fe7e5e2fda1a1194fa5e7f1f7486bcc297c
+FROM fedora45-approved-beta AS runtime-base
 
 ADD --checksum=sha256:ffe6d7e149f03f2e60915592a35d9872a0660c01338f97167d5eb5866c6ec3bb \
     https://www.willuhn.de/products/hibiscus-server/releases/hibiscus-server-2.12.4.zip \
     /tmp/hibiscus-server.zip
-ADD --checksum=sha256:2130fa601ba5cc04a6dd7ac8e6abc32290c338b601b301b120e769ed40ad485d \
-    https://repo.maven.apache.org/maven2/com/github/hbci4j/hbci4j-core/4.1.13/hbci4j-core-4.1.13.jar \
-    /tmp/hbci4j-core-4.1.13.jar
+ADD --checksum=sha256:bb3bc54587a3ff525d68d1763fae811ba8b2a6d8fc1684e157f3beb9a8c8feec \
+    https://repo.maven.apache.org/maven2/com/github/hbci4j/hbci4j-core/4.1.17/hbci4j-core-4.1.17.jar \
+    /tmp/hbci4j-core-4.1.17.jar
 
 RUN dnf -y --setopt=install_weak_deps=False install \
       java-25-openjdk-headless nodejs shadow-utils systemd unzip \
@@ -33,9 +33,28 @@ RUN dnf -y --setopt=install_weak_deps=False install \
  && install -d /usr/share/hibiscus \
  && cp -a /usr/local/hibiscus/cfg /usr/share/hibiscus/cfg \
  && rm -f /usr/local/hibiscus/plugins/hibiscus/lib/hbci4j-core-*.jar \
- && install -m 0644 /tmp/hbci4j-core-4.1.13.jar \
-      /usr/local/hibiscus/plugins/hibiscus/lib/hbci4j-core-4.1.13.jar \
- && rm -f /tmp/hibiscus-server.zip /tmp/hbci4j-core-4.1.13.jar
+ && install -m 0644 /tmp/hbci4j-core-4.1.17.jar \
+      /usr/local/hibiscus/plugins/hibiscus/lib/hbci4j-core-4.1.17.jar \
+ && rm -f /tmp/hibiscus-server.zip /tmp/hbci4j-core-4.1.17.jar
+
+# Recompile only the stable 2.12.4 class's version guard, not a nightly plugin.
+FROM runtime-base AS compatibility
+RUN dnf -y --setopt=install_weak_deps=False install java-25-openjdk-devel
+ADD --checksum=sha256:e917be000f381b23f333643267d865ea6c49196db7f9d8bfdc59b5b44384b50e \
+    https://raw.githubusercontent.com/willuhn/hibiscus/2f6108669ad6a9b720d357be1d963af2efd655a9/src/de/willuhn/jameica/hbci/HBCI.java \
+    /tmp/HBCI.java
+COPY .github/scripts/ApiCompatibility.java /tmp/ApiCompatibility.java
+RUN set -eu; \
+    classpath="$(find /usr/local/hibiscus -name '*.jar' -printf '%p:' | sed 's/:$//')"; \
+    grep -q 'HBCI4JAVA_VERSION = "4.1.10"' /tmp/HBCI.java; \
+    sed -i 's/HBCI4JAVA_VERSION = "4.1.10"/HBCI4JAVA_VERSION = "4.1.17"/' /tmp/HBCI.java; \
+    javac -encoding ISO-8859-1 -cp "$classpath" -d /tmp/patched /tmp/HBCI.java; \
+    jar uf /usr/local/hibiscus/plugins/hibiscus/hibiscus.jar -C /tmp/patched .; \
+    java -cp "$classpath" /tmp/ApiCompatibility.java /usr/local/hibiscus/plugins
+
+FROM runtime-base
+COPY --from=compatibility /usr/local/hibiscus/plugins/hibiscus/hibiscus.jar \
+    /usr/local/hibiscus/plugins/hibiscus/hibiscus.jar
 
 COPY --from=hibiscus-mcp --chown=hibiscus-mcp:hibiscus-mcp \
      /opt/hibiscus-mcp /opt/hibiscus-mcp
@@ -56,7 +75,9 @@ LABEL org.opencontainers.image.title="safrano9999-hibiscus" \
       org.opencontainers.image.source="https://github.com/safrano9999/safrano9999-hibiscus" \
       io.safrano9999.jameica.version="2.12.0" \
       io.safrano9999.hibiscus.version="2.12.4" \
-      io.safrano9999.hbci4java.version="4.1.13"
+      io.safrano9999.hbci4java.version="4.1.17" \
+      org.opencontainers.image.base.name="Fedora-Container-Base-Generic-45_Beta-1.3.x86_64" \
+      org.opencontainers.image.base.digest="sha256:5f6c3c965a3af6b0faa21efc46ab46b9acfb1e1a8f69cec63fd6e44bdcf270cb"
 
 ENV TZ=Europe/Berlin \
     JAVA_TOOL_OPTIONS=-Duser.timezone=Europe/Berlin
