@@ -50,8 +50,12 @@ async function waitReady(probe, name) {
   throw new Error(`${name} not ready`);
 }
 function rpcReply(text, id) {
-  const objects = text.trim().startsWith('data:')
-    ? text.split(/\r?\n/).filter(x => x.startsWith('data:')).map(x => JSON.parse(x.slice(5)))
+  const objects = /^data:/m.test(text)
+    ? text.split(/\r?\n\r?\n/).flatMap(event => {
+      const data = event.split(/\r?\n/).filter(line => line.startsWith('data:'))
+        .map(line => line.slice(5).trimStart()).join('\n');
+      return data ? [JSON.parse(data)] : [];
+    })
     : [JSON.parse(text)];
   const response = objects.find(x => x.id === id);
   assert.ok(response && !response.error, 'successful JSON-RPC response');
