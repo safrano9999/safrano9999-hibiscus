@@ -40,7 +40,7 @@ RUN dnf -y --setopt=install_weak_deps=False install \
 # Recompile only the stable 2.12.4 class's version guard, not a nightly plugin.
 FROM runtime-base AS compatibility
 RUN dnf -y --setopt=install_weak_deps=False install java-25-openjdk-devel
-ADD --checksum=sha256:e917be000f381b23f333643267d865ea6c49196db7f9d8bfdc59b5b44384b50e \
+ADD --checksum=sha256:05f1667f783cccaf0ae05fb411528debf7a1311b81b4e15a3bad6ee3761f10b2 \
     https://raw.githubusercontent.com/willuhn/hibiscus/2f6108669ad6a9b720d357be1d963af2efd655a9/src/de/willuhn/jameica/hbci/HBCI.java \
     /tmp/HBCI.java
 COPY .github/scripts/ApiCompatibility.java /tmp/ApiCompatibility.java
