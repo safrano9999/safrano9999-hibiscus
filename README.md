@@ -7,11 +7,14 @@ Image: `ghcr.io/safrano9999/safrano9999-hibiscus:latest`
 
 Gepinnt: **Hibiscus Server 2.12.4**, **Jameica 2.12.0**, **HBCI4Java 4.1.17**
 und die freigegebene **Fedora 45 Beta-1.3** wie in ucores Core-pre-Kaskade.
-Kein Nightly: Die HBCI4Java-Versionsprüfung in der stabilen Klasse `HBCI` wird auf
+Kein Wechsel auf Hibiscus-/HBCI4Java-Nightly: Die Versionsprüfung in der stabilen Klasse `HBCI` wird auf
 4.1.17 angepasst. `HBCI` und die unveränderte stabile Klasse `HBCIProperties`
 werden in GitHub Actions gegen 4.1.17 neu kompiliert: `HBCIUtils.init/initThread`
 liefern jetzt einen Client statt `void`, weshalb die JVM-Methodenreferenzen der
 alten Binärdateien nicht mehr passen. Die Banking-Logik bleibt unverändert.
+Die dadurch ungültige Upstream-Signatur wird ausschließlich aus dem geänderten
+`hibiscus.jar` entfernt; dieses ist ein Custom-Build, kein signiertes Original.
+Die Signaturprüfung für Java und andere JARs wird nicht abgeschaltet.
 Die unveränderte 2.12.4-Distribution wird aus unserem bestehenden Image
 `sha256:6004750aa84d5ddbe6c46ea6dce87cb01cdc2af347ca8bab0f181e720ae5a3df`
 übernommen, damit Builds nicht von der Erreichbarkeit des Willuhn-Downloadservers
