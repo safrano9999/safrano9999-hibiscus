@@ -27,7 +27,8 @@ class ApiCompatibility {
         }
         for (Class<?> i : owner.getInterfaces())
             if (member(i, name, descriptor, field)) return true;
-        return member(owner.getSuperclass(), name, descriptor, field);
+        // JVM interface method resolution also includes public Object methods.
+        return member(owner.isInterface() ? Object.class : owner.getSuperclass(), name, descriptor, field);
     }
 
     static void scan(InputStream stream, String consumer) throws Exception {
