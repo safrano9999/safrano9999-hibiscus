@@ -11,9 +11,11 @@ Kein Wechsel auf Hibiscus-/HBCI4Java-Nightly: Die Versionsprüfung in der stabil
 4.1.17 angepasst. `HBCI` und die unveränderte stabile Klasse `HBCIProperties`
 werden in GitHub Actions gegen 4.1.17 neu kompiliert: `HBCIUtils.init/initThread`
 liefern jetzt einen Client statt `void`, weshalb die JVM-Methodenreferenzen der
-alten Binärdateien nicht mehr passen. Die Banking-Logik bleibt unverändert.
-Die dadurch ungültige Upstream-Signatur wird ausschließlich aus dem geänderten
-`hibiscus.jar` entfernt; dieses ist ein Custom-Build, kein signiertes Original.
+alten Binärdateien nicht mehr passen. Die FinTS-Protokolllogik bleibt unverändert.
+Die stabile Serverklasse `Settings` wird ebenfalls neu kompiliert: Der Fallback
+für `vop.approve` ist `true`, sofern die Konfiguration keinen Wert vorgibt.
+Die dadurch ungültigen Upstream-Signaturen werden ausschließlich aus den geänderten
+`hibiscus.jar` und `hibiscus.server.jar` entfernt; beide sind Custom-Builds.
 Die Signaturprüfung für Java und andere JARs wird nicht abgeschaltet.
 Die unveränderte 2.12.4-Distribution wird aus unserem bestehenden Image
 `sha256:6004750aa84d5ddbe6c46ea6dce87cb01cdc2af347ca8bab0f181e720ae5a3df`
@@ -32,6 +34,14 @@ liegen im MCP-Quellrepo. Es gibt keine Änderung am Banking-Protokoll oder eine
 separate Veröffentlichung des MCP-Images als Voraussetzung dieses Builds.
 
 ## Konfiguration
+
+VoP-Rückfragen werden standardmäßig automatisch bestätigt. Ein vorhandener
+Eintrag `vop.approve=true` bleibt wirksam; `vop.approve=false` schaltet die
+automatische Bestätigung ausdrücklich ab. Die Einstellung liegt im persistenten
+Profil unter `.jameica/cfg/de.willuhn.jameica.hbci.payment.Plugin.properties`.
+Das Image ändert nur den Fallback im Servercode und schreibt keine Konfiguration
+in bestehende Volumes. Der Standard gilt auch für das aus dem Image vorbereitete
+Bare-Metal-System. Die VoP-Prüfung durch die Bank bleibt bestehen.
 
 `config.sh` ist lokal ein Hardlink auf den gemeinsamen Generator aus
 `SCRIPTS/safrano9999/config/config.sh`. Die bekannten Skip-/New-Regeln gelten
@@ -143,7 +153,9 @@ Zusätzlich werden alle HBCI4Java-Methoden- und Feldreferenzen der Plugin-JARs
 gegen 4.1.17 aufgelöst. Ein zweiter Test startet den echten Hibiscus-Server mit
 einem leeren H2-Profil und Dummy-Passwort in einem Container ohne Netzwerk.
 Er prüft WebUI, Authentifizierung, XML-RPC und die rein lesenden MCP-Aufrufe
-für leere Konten-/Auftragslisten. Kein Bank-Sync und keine echten Zugangsdaten.
+für leere Konten-/Auftragslisten. Ein nur im Testcontainer geladener Java-Agent
+liest den tatsächlichen VoP-Wert im gestarteten Server: fehlender Eintrag ergibt
+`true`, explizites `false` bzw. `true` bleibt erhalten. Kein Bank-Sync und keine echten Zugangsdaten.
 Release-Tag und `latest` werden erst nach diesen Tests auf den Kandidaten gesetzt.
 
 Das optionale Standalone-Containerfile bleibt im MCP-Quellrepo unter

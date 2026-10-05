@@ -2,7 +2,7 @@
 // CI only: network=none, an empty H2 profile and dummy credentials. No bank sync.
 import assert from 'node:assert/strict';
 import {spawn, execFileSync} from 'node:child_process';
-import {mkdir, writeFile, chown, readFile} from 'node:fs/promises';
+import {mkdir, mkdtemp, writeFile, chown, readFile, rm} from 'node:fs/promises';
 import https from 'node:https';
 import {setTimeout as delay} from 'node:timers/promises';
 
@@ -13,6 +13,8 @@ const credentials = user => ({
   gid: Number(execFileSync('id', ['-g', user])),
 });
 const bankingUser = credentials('hibiscus');
+const probeDirectory = await mkdtemp('/tmp/hibiscus-vop-probe-');
+await chown(probeDirectory, bankingUser.uid, bankingUser.gid);
 await mkdir(`${home}/.jameica`, {recursive:true});
 await chown(home, bankingUser.uid, bankingUser.gid);
 await chown(`${home}/.jameica`, bankingUser.uid, bankingUser.gid);
@@ -62,11 +64,52 @@ function rpcReply(text, id) {
   return response.result;
 }
 
-try {
-  launch('/usr/bin/java', ['-Djava.net.preferIPv4Stack=true', `-Duser.home=${home}`, '-Xmx512m',
+async function startBanking() {
+  await rm(`${probeDirectory}/ready`, {force:true});
+  await rm(`${probeDirectory}/result`, {force:true});
+  const child = launch('/usr/bin/java', ['-Djava.net.preferIPv4Stack=true', `-Duser.home=${home}`, '-Xmx512m',
+    `-javaagent:/tmp/vop-default-probe.jar=${probeDirectory}`,
     '-jar','/usr/local/hibiscus/jameica-linux64.jar','-d','-p',password],
     {...bankingUser,cwd:'/usr/local/hibiscus',env:{...process.env,HOME:home}});
   await waitReady(async () => (await request('/hibiscus/')).status === 200, 'Hibiscus WebUI');
+  return child;
+}
+
+async function stopBanking(child) {
+  if (child.exitCode !== null || child.signalCode !== null) return;
+  await new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      child.kill('SIGKILL');
+      reject(new Error('Hibiscus did not stop before configuration change'));
+    }, 30000);
+    child.once('exit', () => {clearTimeout(timer); resolve();});
+    child.kill('SIGTERM');
+  });
+}
+
+async function checkVoPDefault(expected, description) {
+  await writeFile(`${probeDirectory}/ready`, 'ready\n');
+  await waitReady(async () => {
+    try {return (await readFile(`${probeDirectory}/result`, 'utf8')).length > 0;}
+    catch (error) {if (error.code === 'ENOENT') return false; throw error;}
+  }, 'VoP setting observer');
+  const actual = await readFile(`${probeDirectory}/result`, 'utf8');
+  assert.equal(actual, String(expected), description);
+  console.log(`PASS: ${description} -> ${actual}`);
+}
+
+try {
+  const pluginConfig = `${home}/.jameica/cfg/de.willuhn.jameica.hbci.payment.Plugin.properties`;
+  await rm(pluginConfig, {force:true});
+  let banking = await startBanking();
+  await checkVoPDefault(true, 'VoP approval defaults to true without a configuration entry');
+  for (const explicit of [false, true]) {
+    await stopBanking(banking);
+    await writeFile(pluginConfig, `vop.approve=${explicit}\n`);
+    await chown(pluginConfig, bankingUser.uid, bankingUser.gid);
+    banking = await startBanking();
+    await checkVoPDefault(explicit, `Explicit vop.approve=${explicit} is respected`);
+  }
   assert.equal((await request('/hibiscus/', undefined, false)).status, 401);
   for (const method of ['hibiscus.xmlrpc.konto.find','hibiscus.xmlrpc.sepaueberweisung.find']) {
     const params = method.includes('sepaueberweisung')
@@ -104,7 +147,7 @@ try {
   assert.equal(empty.content[0].text,'No matching Hibiscus account found');
   const appLog = await readFile(`${home}/.jameica/jameica.log`, 'utf8');
   assert.ok(!/NoSuchMethodError|NoSuchFieldError|NoClassDefFoundError|SecurityException|Fehler beim Initialisieren des HBCI|stimmt nicht mit der erwarteten Version/.test(appLog), 'clean banking plugin startup');
-  console.log('PASS: Hibiscus 2.12.4 + HBCI4Java 4.1.17 WebUI/auth/XML-RPC/MCP, no bank access');
+  console.log('PASS: Hibiscus 2.12.4 + HBCI4Java 4.1.17 VoP defaults/overrides/WebUI/auth/XML-RPC/MCP, no bank access');
 } catch (error) {
   console.error(logs);
   try {console.error(await readFile(`${home}/.jameica/jameica.log`, 'utf8'));} catch {}

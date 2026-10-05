@@ -163,14 +163,20 @@ jobs:
           docker exec -i "$container_id" node --input-type=module \
             < .github/scripts/mcp-protocol-smoke.mjs
 
-      - name: Test Hibiscus WebUI XML-RPC and MCP with an isolated empty profile
+      - name: Test VoP defaults WebUI XML-RPC and MCP with an isolated empty profile
         env:
           CANDIDATE_DIGEST: ${{ steps.build.outputs.digest }}
         run: |
           set -euo pipefail
           image="${IMAGE_NAME}@${CANDIDATE_DIGEST}"
+          probe_dir="$(mktemp -d)"
+          javac --release 17 -d "$probe_dir" .github/scripts/VoPDefaultProbe.java
+          printf 'Premain-Class: VoPDefaultProbe\n' > "$probe_dir/MANIFEST.MF"
+          jar --create --file "$probe_dir/vop-default-probe.jar" \
+            --manifest "$probe_dir/MANIFEST.MF" -C "$probe_dir" VoPDefaultProbe.class
           container_id="$(docker run -d --network none --entrypoint /usr/bin/sleep "$image" infinity)"
-          trap 'docker rm -fv "$container_id" >/dev/null 2>&1 || true' EXIT
+          trap 'docker rm -fv "$container_id" >/dev/null 2>&1 || true; rm -rf "$probe_dir"' EXIT
+          docker cp "$probe_dir/vop-default-probe.jar" "$container_id:/tmp/vop-default-probe.jar"
           docker exec -i "$container_id" node --input-type=module \
             < .github/scripts/server-api-smoke.mjs
 
@@ -188,5 +194,5 @@ jobs:
             echo "Hibiscus 2.12.4 / HBCI4Java 4.1.17 / Fedora 45 Beta-1.3"
             echo "Image: ${IMAGE_NAME}:${IMAGE_TAG}"
             echo "Digest: ${CANDIDATE_DIGEST}"
-            echo "Java API linkage, MCP protocols, WebUI and XML-RPC verified without bank access."
+            echo "Java API linkage, VoP default/explicit overrides, MCP protocols, WebUI and XML-RPC verified without bank access."
           } >> "$GITHUB_STEP_SUMMARY"

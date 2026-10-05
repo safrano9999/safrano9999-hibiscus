@@ -48,6 +48,10 @@ ADD --checksum=sha256:05f1667f783cccaf0ae05fb411528debf7a1311b81b4e15a3bad6ee376
 ADD --checksum=sha256:c8d6c299628c149dfcc7c1b15da067c7670c87d03e584aa25ef264d57840340a \
     https://raw.githubusercontent.com/willuhn/hibiscus/2f6108669ad6a9b720d357be1d963af2efd655a9/src/de/willuhn/jameica/hbci/HBCIProperties.java \
     /tmp/HBCIProperties.java
+# Same Settings source as the bundled 2.12.4 server; only its VoP fallback changes.
+ADD --checksum=sha256:6eb0661f5cc1db8f3168bf8b0b89b863c65e3131ec9fee9ff57ace78a7b846ba \
+    https://raw.githubusercontent.com/willuhn/hibiscus.server/e3554c7d07633bcc135b5585cf4d54af33af8412/src/de/willuhn/jameica/hbci/payment/Settings.java \
+    /tmp/Settings.java
 COPY .github/scripts/ApiCompatibility.java /tmp/ApiCompatibility.java
 RUN set -eu; \
     classpath="$(find /usr/local/hibiscus -name '*.jar' -printf '%p:' | sed 's/:$//')"; \
@@ -55,14 +59,21 @@ RUN set -eu; \
     sed -i 's/HBCI4JAVA_VERSION = "4.1.10"/HBCI4JAVA_VERSION = "4.1.17"/' /tmp/HBCI.java; \
     javac -encoding ISO-8859-1 -cp "$classpath" -d /tmp/patched /tmp/HBCI.java /tmp/HBCIProperties.java; \
     jar uf /usr/local/hibiscus/plugins/hibiscus/hibiscus.jar -C /tmp/patched .; \
-    # Our modified JAR is no longer the upstream-signed binary. Remove only its
-    # now-invalid signature, not signature verification for Java or other JARs.
+    test "$(grep -Fc 'return settings.getBoolean("vop.approve",false);' /tmp/Settings.java)" = 1; \
+    sed -i 's/getBoolean("vop\.approve",false)/getBoolean("vop.approve",true)/' /tmp/Settings.java; \
+    javac -encoding ISO-8859-1 -cp "$classpath" -d /tmp/patched-server /tmp/Settings.java; \
+    jar uf /usr/local/hibiscus/plugins/hibiscus.server/hibiscus.server.jar -C /tmp/patched-server .; \
+    # Remove only the now-invalid signatures from our two modified JARs.
+    # Signature verification for Java and all other JARs stays enabled.
     zip -d /usr/local/hibiscus/plugins/hibiscus/hibiscus.jar META-INF/CN_JAMEI.SF META-INF/CN_JAMEI.RSA; \
+    zip -d /usr/local/hibiscus/plugins/hibiscus.server/hibiscus.server.jar META-INF/CN_JAMEI.SF META-INF/CN_JAMEI.RSA; \
     java -cp "$classpath" /tmp/ApiCompatibility.java /usr/local/hibiscus/plugins
 
 FROM runtime-base
 COPY --from=compatibility /usr/local/hibiscus/plugins/hibiscus/hibiscus.jar \
     /usr/local/hibiscus/plugins/hibiscus/hibiscus.jar
+COPY --from=compatibility /usr/local/hibiscus/plugins/hibiscus.server/hibiscus.server.jar \
+    /usr/local/hibiscus/plugins/hibiscus.server/hibiscus.server.jar
 
 COPY --from=hibiscus-mcp --chown=hibiscus-mcp:hibiscus-mcp \
      /opt/hibiscus-mcp /opt/hibiscus-mcp
@@ -84,6 +95,7 @@ LABEL org.opencontainers.image.title="safrano9999-hibiscus" \
       io.safrano9999.jameica.version="2.12.0" \
       io.safrano9999.hibiscus.version="2.12.4" \
       io.safrano9999.hbci4java.version="4.1.17" \
+      io.safrano9999.hibiscus.vop-approve.default="true" \
       io.safrano9999.hibiscus.distribution.digest="sha256:6004750aa84d5ddbe6c46ea6dce87cb01cdc2af347ca8bab0f181e720ae5a3df" \
       org.opencontainers.image.base.name="Fedora-Container-Base-Generic-45_Beta-1.3.x86_64" \
       org.opencontainers.image.base.digest="sha256:5f6c3c965a3af6b0faa21efc46ab46b9acfb1e1a8f69cec63fd6e44bdcf270cb"
