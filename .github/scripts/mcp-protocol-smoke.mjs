@@ -11,6 +11,7 @@ const endpoint = "http://127.0.0.1:8000/mcp";
 const bearer = "ci-gateway";
 const protocols = ["2025-11-25", "2025-03-26", "2024-11-05"];
 const expectedTools = ["create_transfer", "get_balance", "pending_transfers"];
+assert.equal(JSON.parse(await readFile("/opt/supergateway/package.json", "utf8")).version, "4.1.0");
 const sdkVersions = {};
 for (const component of ["hibiscus-mcp", "supergateway"]) {
   const path = `/opt/${component}/node_modules/@modelcontextprotocol/sdk/package.json`;
