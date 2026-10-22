@@ -35,8 +35,11 @@ RUN --mount=type=bind,from=node-release,source=/node.tar.xz,target=/tmp/node.tar
     dnf -y upgrade \
  && dnf -y --setopt=install_weak_deps=False install \
       ca-certificates java-25-openjdk-headless libatomic libstdc++ shadow-utils systemd tar unzip xz \
- && rpm -q --whatprovides 'ca-certificates >= 2026.2.92_v9.0.319' \
+ && rpm -q ca-certificates \
  && update-ca-trust extract \
+ && trust list --filter=ca-anchors > /tmp/ca-anchors.txt \
+ && ! grep -Eq 'label: (emSign ECC Root CA - G3|AAA Certificate Services|emSign Root CS CA - G3)$' /tmp/ca-anchors.txt \
+ && rm -f /tmp/ca-anchors.txt \
  && dnf clean all \
  && tar --extract --xz --file=/tmp/node.tar.xz --directory=/usr/local \
       --strip-components=1 --no-same-owner \
