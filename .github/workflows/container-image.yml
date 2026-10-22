@@ -139,6 +139,14 @@ jobs:
           docker run --rm --entrypoint /bin/bash "$image" -lc '
             set -euo pipefail
             test -f /usr/local/hibiscus/plugins/hibiscus/lib/hbci4j-core-4.1.17.jar
+            test "$(node --version)" = "v26.12.1"
+            test "$(/usr/bin/node --version)" = "v26.12.1"
+            npm --version
+            npx --version
+            if rpm -qa --qf "%{NAME}\n" "nodejs*" | grep -q .; then
+              echo "Unexpected Fedora Node.js package in runtime image" >&2
+              exit 1
+            fi
             node --check /opt/hibiscus-mcp/server.mjs
             systemd-analyze verify safrano9999-hibiscus.service safrano9999-hibiscus-mcp.service safrano9999-hibiscus.target
             java --version

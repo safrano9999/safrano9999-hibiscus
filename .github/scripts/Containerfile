@@ -1,7 +1,13 @@
 # Source of truth: SCRIPTS/githubactions. Generated copies are overwritten.
 # syntax=docker/dockerfile:1.7
 
-ARG NODE_IMAGE=docker.io/library/node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1
+ARG NODE_IMAGE=docker.io/library/node:26.12.1-alpine@sha256:40cd011b55415bc894e45b02fdd5a5dfde056921b7d23a64c74f80497af48797
+
+# Official glibc binary for the existing linux/amd64 Fedora runtime.
+FROM scratch AS node-release
+ADD --checksum=sha256:6170b2d474e1c626f43cff3adc118df9fe3b573258a4fc3d850c8dbc6b079bbd \
+    https://nodejs.org/dist/v26.12.1/node-v26.12.1-linux-x64.tar.xz /node.tar.xz
+
 FROM ${NODE_IMAGE} AS hibiscus-mcp
 RUN apk add --no-cache bash git
 WORKDIR /src/hibiscus-mcp
@@ -25,9 +31,16 @@ ADD --checksum=sha256:bb3bc54587a3ff525d68d1763fae811ba8b2a6d8fc1684e157f3beb9a8
     https://repo.maven.apache.org/maven2/com/github/hbci4j/hbci4j-core/4.1.17/hbci4j-core-4.1.17.jar \
     /tmp/hbci4j-core-4.1.17.jar
 
-RUN dnf -y --setopt=install_weak_deps=False install \
-      java-25-openjdk-headless nodejs shadow-utils systemd unzip \
+RUN --mount=type=bind,from=node-release,source=/node.tar.xz,target=/tmp/node.tar.xz \
+    dnf -y --setopt=install_weak_deps=False install \
+      java-25-openjdk-headless libatomic libstdc++ shadow-utils systemd tar unzip xz \
  && dnf clean all \
+ && tar --extract --xz --file=/tmp/node.tar.xz --directory=/usr/local \
+      --strip-components=1 --no-same-owner \
+ && ln -s /usr/local/bin/node /usr/bin/node \
+ && ln -s /usr/local/bin/npm /usr/bin/npm \
+ && ln -s /usr/local/bin/npx /usr/bin/npx \
+ && test "$(/usr/bin/node --version)" = "v26.12.1" \
  && useradd --system --home-dir /var/lib/hibiscus --create-home hibiscus \
  && useradd --system --home-dir /var/lib/hibiscus-mcp --create-home hibiscus-mcp \
  && grep -q 'name="hibiscus" version="2.12.4"' /usr/local/hibiscus/plugins/hibiscus/plugin.xml \
@@ -95,6 +108,7 @@ LABEL org.opencontainers.image.title="safrano9999-hibiscus" \
       io.safrano9999.jameica.version="2.12.0" \
       io.safrano9999.hibiscus.version="2.12.4" \
       io.safrano9999.hbci4java.version="4.1.17" \
+      io.safrano9999.nodejs.version="26.12.1" \
       io.safrano9999.hibiscus.vop-approve.default="true" \
       io.safrano9999.hibiscus.distribution.digest="sha256:6004750aa84d5ddbe6c46ea6dce87cb01cdc2af347ca8bab0f181e720ae5a3df" \
       org.opencontainers.image.base.name="Fedora-Container-Base-Generic-45_Beta-1.3.x86_64" \

@@ -7,6 +7,16 @@ Image: `ghcr.io/safrano9999/safrano9999-hibiscus:latest`
 
 Gepinnt: **Hibiscus Server 2.12.4**, **Jameica 2.12.0**, **HBCI4Java 4.1.17**
 und die freigegebene **Fedora 45 Beta-1.3** wie in ucores Core-pre-Kaskade.
+
+Node.js **26.12.1** is installed directly from the official Linux x64 binary
+archive, pinned by SHA-256 in the Containerfile. It is not installed through
+DNF. The build stage uses the matching official Node 26.12.1 Alpine image,
+pinned by digest. Runtime `node`, `npm` and `npx` are installed under
+`/usr/local`; `/usr/bin` symlinks preserve the existing systemd and CI commands.
+The archive is mounted only during the build and is not retained in the image.
+The existing GitHub Actions checks verify the Node version, npm/npx, absence
+of Fedora Node packages, and MCP/WebUI/XML-RPC behavior before publication.
+
 Kein Wechsel auf Hibiscus-/HBCI4Java-Nightly: Die Versionsprüfung in der stabilen Klasse `HBCI` wird auf
 4.1.17 angepasst. `HBCI` und die unveränderte stabile Klasse `HBCIProperties`
 werden in GitHub Actions gegen 4.1.17 neu kompiliert: `HBCIUtils.init/initThread`
