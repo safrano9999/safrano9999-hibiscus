@@ -16,7 +16,7 @@ const sdkVersions = {};
 for (const component of ["hibiscus-mcp", "supergateway"]) {
   const path = `/opt/${component}/node_modules/@modelcontextprotocol/sdk/package.json`;
   const installed = JSON.parse(await readFile(path, "utf8"));
-  assert.equal(installed.version, "1.30.0", `${component} SDK version`);
+  assert.equal(installed.version, component === "hibiscus-mcp" ? "1.32.2" : "1.30.0", `${component} SDK version`);
   sdkVersions[component] = installed.version;
 }
 
